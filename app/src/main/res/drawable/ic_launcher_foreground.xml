@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Golden Ring -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M54,22 A32,32 0 1,1 53.9,22 Z M54,27 A27,27 0 1,0 54.1,27 Z" />
+    <!-- Royal Crown Silhouette -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M32,64 L28,42 L42,51 L54,34 L66,51 L80,42 L76,64 Z" />
+    <!-- Crown Base Bar -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M32,66 L76,66 L74,73 L34,73 Z" />
+    <!-- Center Ruby Gem -->
+    <path
+        android:fillColor="#E11D48"
+        android:pathData="M54,48 L59,55 L54,62 L49,55 Z" />
+</vector>

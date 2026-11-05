@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+               'userId', 'playerId', 'displayName', 'avatarIndex',
+               'mainBalance', 'bonusBalance', 'safeBalance',
+               'vipLevel', 'vipPoints', 'streakDays', 'lastSpinDay',
+               'referralCode', 'paymentMethod', 'accountNumber', 'accountHolder',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'playerId', 'displayName', 'avatarIndex',
+               'mainBalance', 'bonusBalance', 'safeBalance',
+               'vipLevel', 'vipPoints', 'streakDays', 'lastSpinDay',
+               'referralCode', 'paymentMethod', 'accountNumber', 'accountHolder',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.playerId is string && data.playerId.size() >= 4 && data.playerId.size() <= 20 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+             data.avatarIndex is int && data.avatarIndex >= 0 && data.avatarIndex <= 10 &&
+             data.mainBalance is number && data.mainBalance >= 0 &&
+             data.bonusBalance is number && data.bonusBalance >= 0 &&
+             data.safeBalance is number && data.safeBalance >= 0 &&
+             data.vipLevel is int && data.vipLevel >= 0 && data.vipLevel <= 20 &&
+             data.vipPoints is int && data.vipPoints >= 0 &&
+             data.streakDays is int && data.streakDays >= 0 && data.streakDays <= 30 &&
+             data.lastSpinDay is int && data.lastSpinDay >= 0 &&
+             data.referralCode is string && data.referralCode.size() >= 3 && data.referralCode.size() <= 20 &&
+             data.paymentMethod is string && data.paymentMethod.size() <= 30 &&
+             data.accountNumber is string && data.accountNumber.size() <= 40 &&
+             data.accountHolder is string && data.accountHolder.size() <= 60 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidWalletTransaction(data) {
+      return data.keys().hasAll([
+               'userId', 'type', 'method', 'amount', 'status', 'referenceNote', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'type', 'method', 'amount', 'status', 'referenceNote', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.type is string && data.type.size() <= 30 &&
+             data.type in ['DEPOSIT', 'WITHDRAW', 'SAFE_DEPOSIT', 'SAFE_WITHDRAW', 'BONUS', 'SHOP_BUY'] &&
+             data.method is string && data.method.size() <= 30 &&
+             data.method in ['JAZZCASH', 'EASYPAISA', 'BANK', 'SAFE_VAULT', 'DAILY_BONUS', 'SPIN_WHEEL', 'SHOP_PACK'] &&
+             data.amount is number && data.amount > 0 &&
+             data.status is string && data.status.size() <= 20 &&
+             data.status in ['PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'] &&
+             data.referenceNote is string && data.referenceNote.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidGameRoundRecord(data) {
+      return data.keys().hasAll([
+               'userId', 'gameId', 'gameTitle', 'betAmount', 'winAmount', 'outcomeText', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'gameId', 'gameTitle', 'betAmount', 'winAmount', 'outcomeText', 'createdAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.gameId is string && data.gameId.size() >= 1 && data.gameId.size() <= 40 &&
+             data.gameTitle is string && data.gameTitle.size() >= 1 && data.gameTitle.size() <= 60 &&
+             data.betAmount is number && data.betAmount >= 0 &&
+             data.winAmount is number && data.winAmount >= 0 &&
+             data.outcomeText is string && data.outcomeText.size() >= 1 && data.outcomeText.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().playerId == existing().playerId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'avatarIndex', 'mainBalance', 'bonusBalance', 'safeBalance',
+                         'vipLevel', 'vipPoints', 'streakDays', 'lastSpinDay', 'referralCode',
+                         'paymentMethod', 'accountNumber', 'accountHolder', 'updatedAt'
+                       ]);
+
+      allow delete: if false;
+
+      match /transactions/{txId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(txId) &&
+                      request.auth.uid == userId && existing().userId == request.auth.uid;
+        allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(txId) &&
+                         request.auth.uid == userId &&
+                         isValidWalletTransaction(incoming());
+
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(txId) &&
+                         request.auth.uid == userId &&
+                         isValidWalletTransaction(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().type == existing().type &&
+                         incoming().method == existing().method &&
+                         incoming().amount == existing().amount &&
+                         incoming().createdAt == existing().createdAt &&
+                         existing().status == 'PENDING' &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'referenceNote', 'updatedAt']);
+
+        allow delete: if false;
+      }
+
+      match /game_history/{roundId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(roundId) &&
+                      request.auth.uid == userId && existing().userId == request.auth.uid;
+        allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(roundId) &&
+                         request.auth.uid == userId &&
+                         isValidGameRoundRecord(incoming());
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Royal Gold Club</string>
+    <string name="auth_title">ROYAL GOLD CLUB</string>
+    <string name="auth_subtitle">10-in-1 Luxury Gaming &amp; PKR Wallet Hub</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sports_bonus">SPORTS BONUS</string>
+    <string name="bonus_label">Bonus</string>
+    <string name="vip_label">VIP</string>
+    <string name="mail_label">Mail</string>
+    <string name="support_label">Support</string>
+    <string name="setting_label">Setting</string>
+    <string name="lucky_player">Lucky Player</string>
+    <string name="spin_wheel">Spin Wheel</string>
+    <string name="seven_get_one_free">7 GET 1 FREE</string>
+    <string name="agent_label">Agent</string>
+    <string name="notice_label">Notice</string>
+    <string name="share_label">Share</string>
+    <string name="safe_label">Safe</string>
+    <string name="withdraw_label">Withdraw</string>
+    <string name="pay_shop_label">Pay • SHOP</string>
+    <string name="back_to_lobby">Lobby</string>
+    <string name="place_bet">Place Bet</string>
+    <string name="cash_out">Cash Out</string>
+</resources>

@@ -1,0 +1,213 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Represents a Royal Gold Club player profile with unique 7-digit ID, PKR wallet, bonus balance, safe vault balance, VIP status, and bound local payment details.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the player."
+        },
+        "playerId": {
+          "type": "string",
+          "description": "Unique 7-digit numeric display ID shown in the lobby header."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Player display name."
+        },
+        "avatarIndex": {
+          "type": "integer",
+          "description": "Selected royal avatar index (0-10)."
+        },
+        "mainBalance": {
+          "type": "number",
+          "description": "Main playable and withdrawable PKR balance."
+        },
+        "bonusBalance": {
+          "type": "number",
+          "description": "Promotional bonus PKR balance."
+        },
+        "safeBalance": {
+          "type": "number",
+          "description": "Chips locked inside the personal Safe vault."
+        },
+        "vipLevel": {
+          "type": "integer",
+          "description": "Player VIP tier (1-10)."
+        },
+        "vipPoints": {
+          "type": "integer",
+          "description": "Accumulated VIP experience points from betting."
+        },
+        "streakDays": {
+          "type": "integer",
+          "description": "7 Get 1 Free consecutive check-in count."
+        },
+        "lastSpinDay": {
+          "type": "integer",
+          "description": "Epoch day of last daily spin wheel claim."
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "Unique agent referral code for commission tracking."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Bound payout method (JAZZCASH, EASYPAISA, BANK)."
+        },
+        "accountNumber": {
+          "type": "string",
+          "description": "Bound payout account or mobile wallet number."
+        },
+        "accountHolder": {
+          "type": "string",
+          "description": "Bound payout account holder full name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of profile creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "playerId",
+        "displayName",
+        "avatarIndex",
+        "mainBalance",
+        "bonusBalance",
+        "safeBalance",
+        "vipLevel",
+        "vipPoints",
+        "streakDays",
+        "lastSpinDay",
+        "referralCode",
+        "paymentMethod",
+        "accountNumber",
+        "accountHolder",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WalletTransaction": {
+      "title": "WalletTransaction",
+      "description": "Represents a PKR deposit, withdrawal, safe transfer, or bonus claim transaction.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["DEPOSIT", "WITHDRAW", "SAFE_DEPOSIT", "SAFE_WITHDRAW", "BONUS", "SHOP_BUY"],
+          "description": "Type of wallet operation."
+        },
+        "method": {
+          "type": "string",
+          "enum": ["JAZZCASH", "EASYPAISA", "BANK", "SAFE_VAULT", "DAILY_BONUS", "SPIN_WHEEL", "SHOP_PACK"],
+          "description": "Payment rail or reward source."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Transaction amount in PKR."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "APPROVED", "COMPLETED", "REJECTED"],
+          "description": "Settlement status of the transaction."
+        },
+        "referenceNote": {
+          "type": "string",
+          "description": "Account number, TID reference, or package description."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "type",
+        "method",
+        "amount",
+        "status",
+        "referenceNote",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GameRoundRecord": {
+      "title": "GameRoundRecord",
+      "description": "Stores an audited record of a completed round across any of the 10+ games.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "gameId": {
+          "type": "string",
+          "description": "Identifier of the game played."
+        },
+        "gameTitle": {
+          "type": "string",
+          "description": "Display title of the game played."
+        },
+        "betAmount": {
+          "type": "number",
+          "description": "Total PKR wagered in the round."
+        },
+        "winAmount": {
+          "type": "number",
+          "description": "Total PKR payout won in the round."
+        },
+        "outcomeText": {
+          "type": "string",
+          "description": "Human-readable outcome summary."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the round finished (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "gameId",
+        "gameTitle",
+        "betAmount",
+        "winAmount",
+        "outcomeText",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Player profile and wallet balances scoped to the authenticated user."
+    },
+    "/users/{userId}/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/WalletTransaction" },
+      "description": "Player deposit, withdrawal, safe transfer, and bonus ledger entries."
+    },
+    "/users/{userId}/game_history/{roundId}": {
+      "schema": { "$ref": "#/entities/GameRoundRecord" },
+      "description": "Player game round history across all 10+ casino and skill games."
+    }
+  }
+}

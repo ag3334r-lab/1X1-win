@@ -1,0 +1,6 @@
+{
+  "name": "Royal Gold Club",
+  "description": "A royal 10-in-1 gaming lobby and digital PKR wallet hub featuring roulette, slots, card games, mines, bingo, and safe vault management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
