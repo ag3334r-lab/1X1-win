@@ -90,6 +90,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+private fun resolveDefaultWebClientId(context: Context): String? {
+    val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+    if (resId != 0) {
+        val value = runCatching { context.getString(resId) }.getOrNull()
+        if (!value.isNullOrBlank()) return value
+    }
+    return null
+}
+
 fun attemptAutoSignIn(
     context: Context,
     credentialManager: CredentialManager,
@@ -97,13 +106,13 @@ fun attemptAutoSignIn(
     onUnauthenticated: () -> Unit,
     scope: CoroutineScope
 ) {
-    if (Firebase.auth.currentUser != null) {
+    val currentUser = runCatching { Firebase.auth.currentUser }.getOrNull()
+    if (currentUser != null) {
         onAuthSuccess()
         return
     }
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (e: Exception) {
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId.isNullOrBlank()) {
         onUnauthenticated()
         return
     }
@@ -142,10 +151,9 @@ fun onGoogleSignInClicked(
     scope: CoroutineScope,
     onAuthCancelled: () -> Unit = {}
 ) {
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (e: Exception) {
-        onAuthError("Google Sign-In configuration missing: default_web_client_id not found")
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId.isNullOrBlank()) {
+        onAuthError("Cloud OAuth config not bundled in this test APK. Use Instant VIP Guest Login below to play!")
         return
     }
 
@@ -170,7 +178,7 @@ fun onGoogleSignInClicked(
             onAuthCancelled()
         } catch (e: Exception) {
             Log.e("Auth", "Google Sign-In failed", e)
-            onAuthError(e.localizedMessage ?: "Sign in failed")
+            onAuthError(e.localizedMessage ?: "Sign in failed. You can also tap Instant VIP Guest Login below.")
         }
     }
 }
@@ -181,7 +189,7 @@ fun signOutUser(
     scope: CoroutineScope
 ) {
     val credentialManager = CredentialManager.create(context)
-    Firebase.auth.signOut()
+    runCatching { Firebase.auth.signOut() }
     scope.launch {
         try {
             credentialManager.clearCredentialState(ClearCredentialStateRequest())
@@ -195,7 +203,8 @@ fun signOutUser(
 
 @Composable
 fun RoyalAuthScreen(
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
+    onGuestLogin: () -> Unit = onAuthSuccess
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -399,6 +408,38 @@ fun RoyalAuthScreen(
                             fontWeight = FontWeight.Bold
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        errorMessage = null
+                        onGuestLogin()
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("guest_vip_login_button"),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = VelvetMaroonDark,
+                        contentColor = ImperialGold
+                    ),
+                    border = BorderStroke(1.5.dp, ImperialGold)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Casino,
+                        contentDescription = "Instant VIP Guest Login",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Instant Play as VIP Guest (ID: 7481269)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

@@ -106,6 +106,7 @@ jobs:
           echo "APK successfully verified at: $EXPECTED_APK"
 
       - name: Upload debug APK artifact
+        id: upload_apk
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
@@ -115,7 +116,7 @@ jobs:
       - name: Prepare APK release asset
         id: prep_asset
         run: |
-          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]//-/g')
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g')
           RUN_NUM="${{ github.run_number }}"
           ASSET_NAME="${REPO_NAME}-debug-build-${RUN_NUM}.apk"
           TEMP_DIR="${{ runner.temp }}/release-asset"
@@ -149,13 +150,26 @@ jobs:
           TITLE="Debug APK Build #${{ github.run_number }}"
           COMMIT_SHA="${{ github.sha }}"
 
-          NOTES_FILE="${{ runner.temp }}/release_notes.txt"
-          printf "This is an automatically generated debug APK.\nThe APK was built by GitHub Actions.\n\nDetails:\n- GitHub Actions Run Number: %s\n- GitHub Actions Run Attempt: %s\n- Source Commit SHA: %s\n\nNotice:\n- The APK is intended for testing.\n- The APK is not a Play Store production release.\n- The APK is signed only with a temporary debug keystore.\n" "${{ github.run_number }}" "${{ github.run_attempt }}" "${COMMIT_SHA}" > "$NOTES_FILE"
+          NOTES=$(cat <<EOF
+          This is an automatically generated debug APK.
+          The APK was built by GitHub Actions.
+
+          Details:
+          - GitHub Actions Run Number: ${{ github.run_number }}
+          - GitHub Actions Run Attempt: ${{ github.run_attempt }}
+          - Source Commit SHA: ${COMMIT_SHA}
+
+          Notice:
+          - The APK is intended for testing.
+          - The APK is not a Play Store production release.
+          - The APK is signed only with a temporary debug keystore.
+          EOF
+          )
 
           gh release create "$TAG_NAME" "$ASSET_PATH" \
             --target "$COMMIT_SHA" \
             --title "$TITLE" \
-            --notes-file "$NOTES_FILE" \
+            --notes "$NOTES" \
             --latest
 
       - name: Report APK download result
@@ -165,9 +179,18 @@ jobs:
         run: |
           TAG_NAME="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
           ASSET_NAME="${{ steps.prep_asset.outputs.asset_name }}"
+          UPLOAD_OUTCOME="${{ steps.upload_apk.outcome }}"
           RELEASE_OUTCOME="${{ steps.publish_release.outcome }}"
 
-          if [ "$RELEASE_OUTCOME" = "success" ]; then
+          if [ "$UPLOAD_OUTCOME" != "success" ]; then
+            echo "::error::Debug APK build or artifact upload failed."
+            {
+              echo "### ❌ Debug APK Build Failed"
+              echo ""
+              echo "The Gradle build did not produce \`app-debug.apk\`. Check the **Build debug APK** step logs above for compiler details."
+            } >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "$RELEASE_OUTCOME" = "success" ]; then
             echo "=== GitHub Release Publishing Succeeded ==="
             gh release view "$TAG_NAME" || true
             RELEASE_URL=$(gh release view "$TAG_NAME" --json url -q .url 2>/dev/null || echo "https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}")

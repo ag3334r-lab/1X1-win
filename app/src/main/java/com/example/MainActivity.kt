@@ -8,7 +8,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,21 +64,39 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RoyalCasinoAppRoot(
-    auth: FirebaseAuth = Firebase.auth,
     onRequestOrientation: (Boolean) -> Unit = {}
 ) {
-    val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
+    val context = LocalContext.current
+    val firebaseAuth = remember {
+        runCatching {
+            if (com.google.firebase.FirebaseApp.getApps(context).isNotEmpty()) {
+                Firebase.auth
+            } else {
+                null
+            }
+        }.getOrNull()
+    }
+
+    val authFlow = remember(firebaseAuth) {
+        firebaseAuth?.authStateFlow() ?: kotlinx.coroutines.flow.flowOf(null)
+    }
+    val currentUser by authFlow.collectAsStateWithLifecycle(initialValue = firebaseAuth?.currentUser)
+    var isGuestSession by remember { androidx.compose.runtime.mutableStateOf(false) }
     val user = currentUser
 
-    if (user == null) {
+    if (user == null && !isGuestSession) {
         RoyalAuthScreen(
-            onAuthSuccess = {}
+            onAuthSuccess = { isGuestSession = true },
+            onGuestLogin = { isGuestSession = true }
         )
     } else {
+        val activeUserId = user?.uid ?: "guest_7481269"
+        val activeDisplayName = user?.displayName ?: "Guest7481269"
         AuthenticatedCasinoShell(
-            currentUserId = user.uid,
-            displayName = user.displayName ?: "RoyalPlayer",
-            onRequestOrientation = onRequestOrientation
+            currentUserId = activeUserId,
+            displayName = activeDisplayName,
+            onRequestOrientation = onRequestOrientation,
+            onSignedOut = { isGuestSession = false }
         )
     }
 }
@@ -84,7 +105,8 @@ fun RoyalCasinoAppRoot(
 private fun AuthenticatedCasinoShell(
     currentUserId: String,
     displayName: String,
-    onRequestOrientation: (Boolean) -> Unit
+    onRequestOrientation: (Boolean) -> Unit,
+    onSignedOut: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -97,7 +119,13 @@ private fun AuthenticatedCasinoShell(
                     "APPLICATION_KEY missing from CreationExtras"
                 }
                 val databaseId = app.getString(R.string.firestore_database_id)
-                val db = FirebaseFirestore.getInstance(databaseId)
+                val db = runCatching {
+                    if (com.google.firebase.FirebaseApp.getApps(app).isNotEmpty()) {
+                        FirebaseFirestore.getInstance(databaseId)
+                    } else {
+                        null
+                    }
+                }.getOrNull()
                 CasinoViewModel(
                     repository = CasinoRepository(db),
                     currentUserId = currentUserId,
@@ -120,7 +148,7 @@ private fun AuthenticatedCasinoShell(
             onSignOut = {
                 signOutUser(
                     context = context,
-                    onSignOutComplete = {},
+                    onSignOutComplete = onSignedOut,
                     scope = scope
                 )
             }
