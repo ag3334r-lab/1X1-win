@@ -149,23 +149,13 @@ jobs:
           TITLE="Debug APK Build #${{ github.run_number }}"
           COMMIT_SHA="${{ github.sha }}"
 
-          NOTES="This is an automatically generated debug APK.
-          The APK was built by GitHub Actions.
-
-          Details:
-          - GitHub Actions Run Number: ${{ github.run_number }}
-          - GitHub Actions Run Attempt: ${{ github.run_attempt }}
-          - Source Commit SHA: ${COMMIT_SHA}
-
-          Notice:
-          - The APK is intended for testing.
-          - The APK is not a Play Store production release.
-          - The APK is signed only with a temporary debug keystore."
+          NOTES_FILE="${{ runner.temp }}/release_notes.txt"
+          printf "This is an automatically generated debug APK.\nThe APK was built by GitHub Actions.\n\nDetails:\n- GitHub Actions Run Number: %s\n- GitHub Actions Run Attempt: %s\n- Source Commit SHA: %s\n\nNotice:\n- The APK is intended for testing.\n- The APK is not a Play Store production release.\n- The APK is signed only with a temporary debug keystore.\n" "${{ github.run_number }}" "${{ github.run_attempt }}" "${COMMIT_SHA}" > "$NOTES_FILE"
 
           gh release create "$TAG_NAME" "$ASSET_PATH" \
             --target "$COMMIT_SHA" \
             --title "$TITLE" \
-            --notes "$NOTES" \
+            --notes-file "$NOTES_FILE" \
             --latest
 
       - name: Report APK download result
